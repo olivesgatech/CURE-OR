@@ -1,2 +1,1 @@
-# cure-or
 # CURE-OR
