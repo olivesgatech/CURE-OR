@@ -4,7 +4,7 @@ import os
 from dataloader import CUREORrecognitionData
 from utils import *
 
-def challenging_conditions(AWSDir, AzureDir, resultDir=None, common=False, topN=5):
+def challenging_conditions(AWSDir, AzureDir, resultDir, common=False, topN=5):
     cureor = CUREORrecognitionData(AWSDir, AzureDir, common, topN)
     result_path = os.path.join(resultDir, 'Challenging_conditions')
     if not os.path.exists(result_path + '/CSV'): os.makedirs(result_path + '/CSV')
@@ -67,11 +67,25 @@ def challenging_conditions(AWSDir, AzureDir, resultDir=None, common=False, topN=
                                    [color_file, gray_file],
                                    result_path)
 
-def main():
-    common = True
-    topN = 5
+    return
 
-    challenging_conditions('AWS', 'Azure', 'Results', common=common, topN=topN)
+def challenging_conditions_cf(AWSDir, AzureDir, resultDir, common=False, topN=5):
+    cureor = CUREORrecognitionData(AWSDir, AzureDir, common, topN)
+    result_path = os.path.join(resultDir, 'Challenging_conditions_cf')
+    if not os.path.exists(result_path + '/CSV'): os.makedirs(result_path + '/CSV')
+    if not os.path.exists(result_path + '/Plots'): os.makedirs(result_path + '/Plots')
+
+    cfAWS, cfAzure = cureor.cfAWS, cureor.cfAzure
+
+    plot_challenging_types_cf(cfAWS, 'AWS', result_path)
+    plot_challenging_types_cf(cfAzure, 'Azure', result_path)
+
+# def IQA(IQADir):
+
+
+def main():
+    # challenging_conditions('AWS', 'Azure', 'Results', common=True)
+    challenging_conditions_cf('AWS', 'Azure', 'Results')
     # IQA('IQA')
 if __name__=="__main__":
     main()

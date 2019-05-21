@@ -1,5 +1,6 @@
-import os, csv
+import os, csv, json
 import pandas as pd
+import numpy as np
 from collections import OrderedDict
 
 class CUREORrecognitionData:
@@ -42,7 +43,7 @@ class CUREORrecognitionData:
 
         self.levels = ['Level_1','Level_2','Level_3','Level_4','Level_5']
         self.bgs = ['white','texture1','texture2','3d1','3d2']
-        self.devs = ['iPhone','HTC','LG','Logitech','Nikon']
+        self.devs = ['iPhone','HTC','LG','Logitech','DSLR_JPG']
         self.persps = ['0 deg', '90 deg', '180 deg', '270 deg', 'Overhead']
 
         self.awsObj = [40,42,85,87,12,24,69,99,34,60,61,16,65,71,97,5,8,10,68,4,23,36,94] # 23 objects
@@ -57,15 +58,58 @@ class CUREORrecognitionData:
             reader = csv.reader(f)
             self.gtAWS = [[item for item in row if item!= ''] for row in reader]
 
+        with open(self.AWSdir + '/ground_truth.csv','r') as f:
+            reader = csv.reader(f)
+            catLabels = [[] for _ in range(len(self.categories))]
+            for row in reader:
+                obj = int(row[0][0:3])
+                row = [x for x in row if x]
+                catInd = 0
+                for cat in self.categories:
+                    if obj in self.categories[cat]: catLabels[catInd] += row[1:]
+                    catInd += 1
+
+            catLabels = [list(set(x)) for x in catLabels]
+            catLabelsDictKeys = list(set([x for cat in catLabels for x in cat]))
+            catLabelsDict = {key: [] for key in catLabelsDictKeys}
+            for key in catLabelsDict.keys():
+                for cat in range(len(catLabels)):
+                    if key in catLabels[cat]:
+                        catLabelsDict[key].append(cat)
+            self.catLabelsAWS = catLabels
+            self.catLabelsDictAWS = catLabelsDict
+
         with open(self.Azuredir + '/ground_truth.csv','r') as f:
             reader = csv.reader(f)
             self.gtAzure = [[item for item in row if item!= ''] for row in reader]
+
+        with open(self.Azuredir + '/ground_truth.csv','r') as f:
+            reader = csv.reader(f)
+            catLabels = [[] for _ in range(len(self.categories))]
+            for row in reader:
+                obj = int(row[0][0:3])
+                row = [x for x in row if x]
+                catInd = 0
+                for cat in self.categories:
+                    if obj in self.categories[cat]: catLabels[catInd] += row[1:]
+                    catInd += 1
+
+            catLabels = [list(set(x)) for x in catLabels]
+            catLabelsDictKeys = list(set([x for cat in catLabels for x in cat]))
+            catLabelsDict = {key: [] for key in catLabelsDictKeys}
+            for key in catLabelsDict.keys():
+                for cat in range(len(catLabels)):
+                    if key in catLabels[cat]:
+                        catLabelsDict[key].append(cat)
+            self.catLabelsAzure = catLabels
+            self.catLabelsDictAzure = catLabelsDict
 
         ## Import the list of object names
         with open('cure_or_objects.txt') as file:
             self.cure_or_objects = file.readlines()
 
         self.resultsAWS, self.resultsAzure = self.load_recognition_results()
+        self.cfAWS, self.cfAzure = self.load_confusion_matrix()
 
     def load_recognition_results(self):
         resultsAWS, resultsAzure = [], []
@@ -119,3 +163,178 @@ class CUREORrecognitionData:
 
         return resultsAWS, resultsAzure
 
+    def load_confusion_matrix(self):
+        nCols = 7 # 'others' column
+
+        outputLoc = os.path.join('Results', 'Challenging_conditions_cf', 'CSV')
+        if not os.path.exists(outputLoc): os.makedirs(outputLoc)
+
+        try:
+            cfMatAWS, cfMatAzure = [], []
+            for levCT in range(6):
+                cfMatAWS.append(pd.read_csv(os.path.join(outputLoc, 'AWS_lev%d_top1_cf.csv'%levCT), index_col=0))
+                cfMatAzure.append(pd.read_csv(os.path.join(outputLoc, 'Azure_lev%d_top1_cf.csv'%levCT), index_col=0))
+            print('Loading existing confusion matrix data')
+
+        except IOError:
+            print('Generating data for confusion matrix')
+
+	        # List of confusion matrices
+            cfMatAWS = [pd.DataFrame(0, index=range(6), columns=range(nCols)) for _ in range(6)]
+            cfMatAzure = [pd.DataFrame(0, index=range(6), columns=range(nCols)) for _ in range(6)]
+
+            for i in self.cTypes.keys():
+                # No challenge: color & grayscale -> one level only (level 0)
+                if i in [0, 9]:
+                    cfMatAWSPT = cfMatAWS[0]
+                    cfMatAzurePT = cfMatAzure[0]
+                    for bg in self.bgs:
+                        for dev in self.devs:
+                            # AWS
+                            filename = os.path.join('AWS', self.cTypes[i], '_'.join([self.cTypes[i],bg,dev])+'.txt')
+                            cfMatAWS[0] = self._confusion_matrix_each_AWS(filename, cfMatAWSPT)
+
+                            # Azure
+                            filename = os.path.join('Azure', self.cTypes[i], '_'.join([self.cTypes[i],bg,dev])+'.txt')
+                            cfMatAzure[0] = self._confusion_matrix_each_Azure(filename, cfMatAzurePT)
+                else:
+                    levels_tmp = self.levels[:-1] if i in [1, 10] else self.levels
+                    for lev in levels_tmp:
+                        cfMatAWSPT = cfMatAWS[self.levels.index(lev)+1]
+                        cfMatAzurePT = cfMatAzure[self.levels.index(lev)+1]
+                        for bg in self.bgs:
+                            for dev in self.devs:
+                                # AWS
+                                filename = os.path.join('AWS', self.cTypes[i], '_'.join([self.cTypes[i],lev,bg,dev])+'.txt')
+                                cfMatAWS[self.levels.index(lev)+1] = self._confusion_matrix_each_AWS(filename, cfMatAWSPT)
+
+                                # Azure
+                                filename = os.path.join('Azure', self.cTypes[i], '_'.join([self.cTypes[i],lev,bg,dev])+'.txt')
+                                cfMatAzure[self.levels.index(lev)+1] = self._confusion_matrix_each_Azure(filename, cfMatAzurePT)
+
+            cfMatInd = self.categories.keys()
+            cfMatInd.append('others')
+
+            for app, cfMat in zip(['AWS', 'Azure'], [cfMatAWS, cfMatAzure]):
+                levCT = 0
+                for cf in cfMat: 
+                    cf.columns = cfMatInd[:nCols]
+                    cf = cf.rename(index={i: cfMatInd[i] for i in range(len(cf.index))})
+                    cf.to_csv(os.path.join(outputLoc, '%s_lev%d_top1_cf.csv'%(app, levCT)))
+                    levCT += 1
+
+            cfMatAWS, cfMatAzure = [], []
+            for levCT in range(6):
+                cfMatAWS.append(pd.read_csv(os.path.join(outputLoc, 'AWS_lev%d_top1_cf.csv'%levCT), index_col=0))
+                cfMatAzure.append(pd.read_csv(os.path.join(outputLoc, 'Azure_lev%d_top1_cf.csv'%levCT), index_col=0))
+
+        return cfMatAWS, cfMatAzure
+
+    def _confusion_matrix_each_AWS(self, filename, cfMatPT):
+
+        with open(filename) as f:
+            content = f.readlines()
+
+        imgInd = np.array([l for l in range(len(content)) if content[l][0] != '{'])
+        imgInd = np.append(imgInd,len(content)) # Ignore the last imgInd!
+
+        categories = self.categories
+        for k in range(len(imgInd)-1):
+            obj = int(content[imgInd[k]][6:9])
+            if obj in self.awsObj:
+
+                # Determine the correct category of the object: inputCat (0 to 5)
+                catInd = 0
+                for cat in categories:
+                    if obj in categories[cat]: 
+                        inputCat = catInd
+                        break
+                    catInd += 1
+
+                n = 0
+
+                for j in range(imgInd[k]+1, imgInd[k+1]):
+                    if n < 1:
+                        line = json.loads(content[j])
+                        maxConf = line['Confidence']
+                        labels = [line['Name']]
+
+                        # Check next line's confidence & collect if the same confidence value
+                        if j < imgInd[k+1]:
+                            for m in range(j, imgInd[k+1] - 1):
+                                line = json.loads(content[m])
+                                if line['Confidence'] >= maxConf: labels.append(line['Name'])
+                                else: break
+
+                        # Correct category
+                        if bool(set(labels) & set(self.catLabelsAWS[inputCat])): 
+                            
+                            cfMatPT.ix[inputCat, inputCat] += 1
+
+                        # Wrong category 
+                        else: 
+                            if bool(set(labels) & set(self.catLabelsDictAWS.keys())): # the label exists in dict
+                                validLabels = list(set(labels) & set(self.catLabelsDictAWS.keys()))
+                                for label in validLabels:
+                                    score = 1.0/len(validLabels)/len(self.catLabelsDictAWS[label])
+                                    for ind in self.catLabelsDictAWS[label]:
+                                        cfMatPT.ix[inputCat, ind] += score
+                            # 'Others' category
+                            else:
+                                cfMatPT.ix[inputCat, 6] += 1
+
+                        n += 1
+        return cfMatPT
+
+    def _confusion_matrix_each_Azure(self, filename, cfMatPT):
+        with open(filename) as f:
+            content = f.readlines()
+
+        categories = self.categories
+
+        for k in range(len(content)):
+            line = json.loads(content[k])
+            obj = int(line['imgName'][6:9])
+
+            if obj in self.azureObj:
+                # Determine the correct category of the object: inputCat (0 to 5)
+                catInd = 0
+                for cat in categories:
+                    if obj in categories[cat]: 
+                        inputCat = catInd
+                        break
+                    catInd += 1
+
+                n = 0
+
+                for j in range(len(line['tags'])):
+                    if n < 1:
+                        tag = line['tags'][j]
+                        maxConf = tag['confidence']
+                        labels = [tag['name']]
+
+                        if j < len(line['tags']):
+                            for m in range(j + 1, len(line['tags'])):
+                                tag = line['tags'][m]
+                                if tag['confidence'] >= maxConf: labels.append(tag['name'])
+                                else: break
+
+                        # Correct category
+                        if bool(set(labels) & set(self.catLabelsAzure[inputCat])): 
+                            cfMatPT.ix[inputCat, inputCat] += 1
+
+                        # Wrong category 
+                        else: 
+                            if bool(set(labels) & set(self.catLabelsDictAzure.keys())): # the label exists in dict
+                                validLabels = list(set(labels) & set(self.catLabelsDictAzure.keys()))
+                                for label in validLabels:
+                                    score = 1.0/len(validLabels)/len(self.catLabelsDictAzure[label])
+                                    for ind in self.catLabelsDictAzure[label]:
+                                        cfMatPT.ix[inputCat, ind] += score
+                            # 'Others' category
+                            else:
+                                cfMatPT.ix[inputCat, 6] += 1
+
+                        n += 1
+
+        return cfMatPT

@@ -37,8 +37,37 @@ def plot_challenging_types(df_list, df_names, result_path, cTypes):
         plt.savefig(os.path.join(result_path, 'Plots', name+'.jpg'), bbox_inches='tight')
         plt.close()
 
+
+def plot_challenging_types_cf(df_list, app, result_path):
+    for levCT, cfMat in enumerate(df_list):
+        if levCT == 0: numImgs = float(23 * 5 * 5 * 5 * 2)
+        elif levCT == 5: numImgs = float(23 * 5 * 5 * 5 * 2 * 7)
+        else: numImgs = float(23 * 5 * 5 * 5 * 2 * 8)
+
+        tmps = cfMat[cfMat.columns[:-1]].values/numImgs*100
+        tmpMax = max([t for tmp in tmps for t in tmp])
+
+        if levCT == 0: maxVal = tmpMax
+        else:
+            if tmpMax > maxVal: maxVal = tmpMax
+
+        plt.pcolor(cfMat[cfMat.columns[:-1]].values/numImgs*100, cmap='Blues', vmax=maxVal)
+
+        cbar = plt.colorbar()
+        cbar.ax.tick_params(labelsize=13)
+        ax = plt.gca()
+        ax.invert_yaxis()
+        tickLoc = [x + 0.5 for x in range(6)]
+
+        plt.xlabel('Predicted category', fontsize=20, fontweight='normal')
+        plt.xticks(tickLoc, range(1,7), fontsize=16)
+
+        plt.ylabel('Actual category', fontsize=20, fontweight='normal')
+        plt.yticks(tickLoc, range(1,7), fontsize=16)
+
+        plt.savefig(result_path + '/Plots/%s_lev%d_top1_cf.jpg'%(app, levCT),bbox_inches='tight')
+        plt.close()
 # TODO
-# def confusion_matrix():
 # def scatter_plot_IQA():
 # def plot_acquisition_conditions():
 # def scatter_plot_similarity_estimation():
