@@ -92,9 +92,64 @@ def IQA(AWSDir, AzureDir, IQADir, resultDir):
     scatter_plot_IQA(IQA_vals, perf_vals, result_path)
 
 def acquisition_conditions(AWSDir, AzureDir, resultDir, common=False):
-    result_path = os.path.join(resultDir, '/Acquisition_conditions')
+    result_path = os.path.join(resultDir, 'Acquisition_conditions')
     if not os.path.exists(result_path + '/CSV'): os.makedirs(result_path + '/CSV')
     if not os.path.exists(result_path + '/Plots'): os.makedirs(result_path + '/Plots')
+
+    cureor = CUREORrecognitionData(AWSDir, AzureDir, common=common, topN=5)
+    resultsAWS, resultsAzure = cureor.resultsAWS, cureor.resultsAzure
+
+    cTypeIndex = cureor.cTypes.values()[1:9]
+    postfix = 'selObj' if common == False else 'comObj'
+    conditions = [[cureor.bgs, 0, 'bgs'],
+                  [cureor.devs, 2, 'devs'],
+                  [cureor.persps, 4, 'persps']]
+
+    for c in conditions:
+        index, idLoc, cStr = c
+
+        try:
+            dfAWS = pd.read_csv(os.path.join(result_path, 'CSV', 'AWS_%s_%s.csv'%(cStr, postfix)), index_col=0)
+            dfAzure = pd.read_csv(os.path.join(result_path, 'CSV', 'Azure_%s_%s.csv'%(cStr, postfix)), index_col=0)
+
+        except IOError:
+            dfAWS = pd.DataFrame(index=[ind[3:] for ind in cTypeIndex], columns=index)
+            dfAzure = pd.DataFrame(index=[ind[3:] for ind in cTypeIndex], columns=index)
+
+            # AWS
+            numObj = len(cureor.awsObj)
+            numObjf = float(numObj)
+            for i in cureor.cTypes.keys()[0:9]:
+                ct = np.zeros(len(index)) # ex) aType==2: white, texture 1&2, 3d1&2
+                if i not in [0,9]: # ignore original images
+                    levels_tmp = cureor.levels[:-1] if i in [1,10] else cureor.levels
+                    for lev in range(len(levels_tmp)):
+                        for obj in resultsAWS[i][lev*numObj:lev*numObj + numObj]:
+                            for img in obj.index:
+                                idVal = int(img[idLoc]) - 1
+                                ct[idVal] += 1
+                    ind = i - 1 if i < 9 else i - 2 # color: ind = i - 1; grayscale: ind = i - 2
+                    for rank in range(5): dfAWS.ix[ind, rank] = ct[rank]/numObjf/len(levels_tmp)/25*100
+
+            ## Azure
+            numObj = len(cureor.azureObj)
+            numObjf = float(numObj)
+            for i in cureor.cTypes.keys()[0:9]:
+                ct = np.zeros(len(index)) # ex) aType==2: white, texture 1&2, 3d1&2
+                if i not in [0,9]: # ignore original images
+                    levels_tmp = cureor.levels[:-1] if i in [1,10] else cureor.levels
+                    for lev in range(len(levels_tmp)):
+                        for obj in resultsAzure[i][lev*numObj:lev*numObj + numObj]:
+                            for img in obj.index:
+                                idVal = int(img[idLoc]) - 1
+                                ct[idVal] += 1
+                    ind = i - 1 if i < 9 else i - 2 # color: ind = i - 1; grayscale: ind = i - 2
+                    for rank in range(5): dfAzure.ix[ind, rank] = ct[rank]/numObjf/len(levels_tmp)/25*100
+
+            dfAWS.to_csv(os.path.join(result_path, 'CSV', 'AWS_%s_%s.csv'%(cStr,postfix)))
+            dfAzure.to_csv(os.path.join(result_path, 'CSV', 'Azure_%s_%s.csv'%(cStr,postfix)))
+
+        plot_acquisition_conditions([dfAWS, dfAzure], ['AWS', 'Azure'], c, postfix, result_path, cureor.cTypes)
 
 def main():
     # challenging_conditions('AWS', 'Azure', 'Results', common=True)

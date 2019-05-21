@@ -68,6 +68,7 @@ def plot_challenging_types_cf(df_list, app, result_path):
         plt.savefig(result_path + '/Plots/%s_lev%d_top1_cf.jpg'%(app, levCT),bbox_inches='tight')
         plt.close()
 
+
 def scatter_plot_IQA(IQA_vals, perf_vals, result_path):
     markers = ['H','X','o','D','>','P']
     mkSize = 140
@@ -108,6 +109,36 @@ def scatter_plot_IQA(IQA_vals, perf_vals, result_path):
     plt.close()
 
 
+def plot_acquisition_conditions(df_list, df_names, condition, postfix, result_path, cTypes):
+    ## Plot style
+    colorList = cm.rainbow(np.linspace(1,0,9)) #Set2
+    dashList = [(10,10),(7,10),(20,3,10,3),(20,5),(20,20),(5,2,8,5),(10,5),(10,10,5,5)]
+    lineSList = ['-','-.',':','--','-.','--','-','--']
+    lineWList = [2,4,4,4,2,4,4,4] #lineWList[i-1]
+    markerList = ['s','>','<','p','H','d','h','*']
+
+    index, idLoc, cStr = condition
+    if cStr == 'bgs': index = ['White','2D Living room','2D Kitchen','3D Living room','3D Office']
+
+    for dfNumGT, name in zip(df_list, df_names):
+        dfNumGT.loc['Mean'] = dfNumGT.mean()
+
+        ## Plot output for color images
+        plt.figure(figsize=(8,5.8))
+        # plt.figure(figsize=(8,6.5))
+        for i in cTypes.keys()[1:9]:
+            dfNumGT.iloc[i-1].plot(color=to_hex(colorList[i-1]), linestyle=lineSList[i-1], \
+                                    linewidth=3, dashes=dashList[i-1], marker=markerList[i-1],\
+                                    markersize=8)
+        dfNumGT.loc['Mean'].plot(color=to_hex(colorList[-1]), marker=r'$\bowtie$',\
+                                    markersize=8,linewidth=3)
+        plt.xticks(range(5), index, fontsize=16, rotation=20, ha='right')
+        plt.xlim([-0.1,4.1])
+
+        plt.ylabel('Top-5 Accuracy (%%)', fontsize=20, fontweight='normal')
+        plt.yticks(fontsize=16)
+
+        plt.savefig('%s/Plots/%s_%s_%s.jpg'%(result_path, name, cStr, postfix))
+        plt.close()
 # TODO
-# def plot_acquisition_conditions():
 # def scatter_plot_similarity_estimation():
