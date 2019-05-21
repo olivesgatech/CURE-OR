@@ -1,16 +1,17 @@
-import os, csv, json
+import os, csv, json, sys
 import pandas as pd
 import numpy as np
 from collections import OrderedDict
 
 class CUREORrecognitionData:
-    def __init__(self, AWSdir, Azuredir, common=False, topN=5):
-        # AWSdir : directory of AWS recognition results
-        # Azuredir : directory of Azure recognition results
+    def __init__(self, AWSDir, AzureDir, resultDir='Results/', common=False, topN=5, cf=False, IQA=False):
+        # AWSDir : directory of AWS recognition results
+        # AzureDir : directory of Azure recognition results
         # Common: 10 common objects between AWS and Azure (default: False -> Top objects instead)
 
-        self.AWSdir = AWSdir
-        self.Azuredir = Azuredir
+        self.AWSDir = AWSDir
+        self.AzureDir = AzureDir
+        self.resultDir = resultDir
         self.common = common
         self.topN = topN
 
@@ -54,62 +55,65 @@ class CUREORrecognitionData:
             self.azureObj = self.commonObj
 
         ## Import ground truth label lists: AWS, Azure separately
-        with open(self.AWSdir + '/ground_truth.csv','r') as f:
+        with open(self.AWSDir + '/ground_truth.csv','r') as f:
             reader = csv.reader(f)
             self.gtAWS = [[item for item in row if item!= ''] for row in reader]
 
-        with open(self.AWSdir + '/ground_truth.csv','r') as f:
-            reader = csv.reader(f)
-            catLabels = [[] for _ in range(len(self.categories))]
-            for row in reader:
-                obj = int(row[0][0:3])
-                row = [x for x in row if x]
-                catInd = 0
-                for cat in self.categories:
-                    if obj in self.categories[cat]: catLabels[catInd] += row[1:]
-                    catInd += 1
-
-            catLabels = [list(set(x)) for x in catLabels]
-            catLabelsDictKeys = list(set([x for cat in catLabels for x in cat]))
-            catLabelsDict = {key: [] for key in catLabelsDictKeys}
-            for key in catLabelsDict.keys():
-                for cat in range(len(catLabels)):
-                    if key in catLabels[cat]:
-                        catLabelsDict[key].append(cat)
-            self.catLabelsAWS = catLabels
-            self.catLabelsDictAWS = catLabelsDict
-
-        with open(self.Azuredir + '/ground_truth.csv','r') as f:
+        with open(self.AzureDir + '/ground_truth.csv','r') as f:
             reader = csv.reader(f)
             self.gtAzure = [[item for item in row if item!= ''] for row in reader]
 
-        with open(self.Azuredir + '/ground_truth.csv','r') as f:
-            reader = csv.reader(f)
-            catLabels = [[] for _ in range(len(self.categories))]
-            for row in reader:
-                obj = int(row[0][0:3])
-                row = [x for x in row if x]
-                catInd = 0
-                for cat in self.categories:
-                    if obj in self.categories[cat]: catLabels[catInd] += row[1:]
-                    catInd += 1
+        if cf == True:
+            with open(self.AWSDir + '/ground_truth.csv','r') as f:
+                reader = csv.reader(f)
+                catLabels = [[] for _ in range(len(self.categories))]
+                for row in reader:
+                    obj = int(row[0][0:3])
+                    row = [x for x in row if x]
+                    catInd = 0
+                    for cat in self.categories:
+                        if obj in self.categories[cat]: catLabels[catInd] += row[1:]
+                        catInd += 1
 
-            catLabels = [list(set(x)) for x in catLabels]
-            catLabelsDictKeys = list(set([x for cat in catLabels for x in cat]))
-            catLabelsDict = {key: [] for key in catLabelsDictKeys}
-            for key in catLabelsDict.keys():
-                for cat in range(len(catLabels)):
-                    if key in catLabels[cat]:
-                        catLabelsDict[key].append(cat)
-            self.catLabelsAzure = catLabels
-            self.catLabelsDictAzure = catLabelsDict
+                catLabels = [list(set(x)) for x in catLabels]
+                catLabelsDictKeys = list(set([x for cat in catLabels for x in cat]))
+                catLabelsDict = {key: [] for key in catLabelsDictKeys}
+                for key in catLabelsDict.keys():
+                    for cat in range(len(catLabels)):
+                        if key in catLabels[cat]:
+                            catLabelsDict[key].append(cat)
+                self.catLabelsAWS = catLabels
+                self.catLabelsDictAWS = catLabelsDict
+
+
+            with open(self.AzureDir + '/ground_truth.csv','r') as f:
+                reader = csv.reader(f)
+                catLabels = [[] for _ in range(len(self.categories))]
+                for row in reader:
+                    obj = int(row[0][0:3])
+                    row = [x for x in row if x]
+                    catInd = 0
+                    for cat in self.categories:
+                        if obj in self.categories[cat]: catLabels[catInd] += row[1:]
+                        catInd += 1
+
+                catLabels = [list(set(x)) for x in catLabels]
+                catLabelsDictKeys = list(set([x for cat in catLabels for x in cat]))
+                catLabelsDict = {key: [] for key in catLabelsDictKeys}
+                for key in catLabelsDict.keys():
+                    for cat in range(len(catLabels)):
+                        if key in catLabels[cat]:
+                            catLabelsDict[key].append(cat)
+                self.catLabelsAzure = catLabels
+                self.catLabelsDictAzure = catLabelsDict
 
         ## Import the list of object names
         with open('cure_or_objects.txt') as file:
             self.cure_or_objects = file.readlines()
 
         self.resultsAWS, self.resultsAzure = self.load_recognition_results()
-        self.cfAWS, self.cfAzure = self.load_confusion_matrix()
+        if cf == True: self.cfAWS, self.cfAzure = self.load_confusion_matrix()
+        if IQA == True: self.IQA_vals, self.perf_vals = self.load_IQA_results()
 
     def load_recognition_results(self):
         resultsAWS, resultsAzure = [], []
@@ -124,7 +128,7 @@ class CUREORrecognitionData:
 			###csv read: append df -> list of lists (challenges) of objects
 			if i in [0,9]: # original images (color, grayscale)
 				for obj in awsObj: 
-					tmpAWS.append(pd.read_csv(os.path.join(self.AWSdir,
+					tmpAWS.append(pd.read_csv(os.path.join(self.AWSDir,
                                                            self.cTypes[i],
                                                            'By_object_conf_%d_N_%d_sameConf'%(minConf,self.topN),
                                                            self.cure_or_objects[obj - 1][:-2]+'.csv'),index_col=0))
@@ -132,7 +136,7 @@ class CUREORrecognitionData:
 				levels_tmp = self.levels[:-1] if i in [1, 10] else self.levels # resize: 4 levels only
 				for lev in levels_tmp:
 					for obj in awsObj:
-						tmpAWS.append(pd.read_csv(os.path.join(self.AWSdir,
+						tmpAWS.append(pd.read_csv(os.path.join(self.AWSDir,
                                                                self.cTypes[i],
                                                                'By_object_conf_%d_N_%d_%s_sameConf'%(minConf,self.topN,lev),
                                                                self.cure_or_objects[obj - 1][:-2]+'.csv'),index_col=0))
@@ -146,7 +150,7 @@ class CUREORrecognitionData:
             ###csv read: append df -> list of lists (challenges) of objects
             if i in [0,9]: # original images (color, grayscale)
                 for obj in azureObj: 
-                    tmpAzure.append(pd.read_csv(os.path.join(self.Azuredir,
+                    tmpAzure.append(pd.read_csv(os.path.join(self.AzureDir,
                                                              self.cTypes[i],
                                                              'By_object_conf_%d_N_%d_sameConf'%(minConf,self.topN),
                                                              self.cure_or_objects[obj - 1][:-2]+'.csv'),index_col=0))
@@ -154,7 +158,7 @@ class CUREORrecognitionData:
                 levels_tmp = self.levels[:-1] if i in [1, 10] else self.levels # resize: 4 levels only
                 for lev in levels_tmp:
                     for obj in azureObj:
-                        tmpAzure.append(pd.read_csv(os.path.join(self.Azuredir,
+                        tmpAzure.append(pd.read_csv(os.path.join(self.AzureDir,
                                                                  self.cTypes[i],
                                                                  'By_object_conf_%d_N_%d_%s_sameConf'%(minConf,self.topN,lev),
                                                                  self.cure_or_objects[obj - 1][:-2]+'.csv'),index_col=0))
@@ -163,10 +167,11 @@ class CUREORrecognitionData:
 
         return resultsAWS, resultsAzure
 
+
     def load_confusion_matrix(self):
         nCols = 7 # 'others' column
 
-        outputLoc = os.path.join('Results', 'Challenging_conditions_cf', 'CSV')
+        outputLoc = os.path.join(self.resultDir, 'Challenging_conditions_cf', 'CSV')
         if not os.path.exists(outputLoc): os.makedirs(outputLoc)
 
         try:
@@ -338,3 +343,70 @@ class CUREORrecognitionData:
                         n += 1
 
         return cfMatPT
+
+
+    def load_IQA_results(self):
+        self._prepare_IQA_results()
+        return self._run_IQA_matlab_script()
+
+    def _prepare_IQA_results(self):
+        numObjAWS = len(self.awsObj)
+        numObjAzure = len(self.azureObj)
+
+        try:
+            iqaAWS = pd.read_csv(os.path.join(self.resultDir, 'IQA', 'Data',
+                                              'AWS_color_N_%d_obj_%d.csv'%(self.topN, numObjAWS)),
+                                 index_col=0)
+            iqaAzure = pd.read_csv(os.path.join(self.resultDir, 'IQA', 'Data',
+                                                'Azure_color_N_%d_obj_%d.csv'%(self.topN, numObjAzure)),
+                                   index_col=0)
+
+        except IOError:
+            columns = ['%d_%d%d%d'%(lev,i,j,k) for lev in range(6) for i in range(1,6) for j in range(1,6) for k in range(1,6)]
+            iqaAWS = pd.DataFrame(0, index=self.cTypes.values()[1:9], columns=columns)
+            iqaAzure = pd.DataFrame(0, index=self.cTypes.values()[1:9], columns=columns)
+
+            for cType in self.cTypes.keys()[:9]:
+
+                if cType == 0:
+                    for obj in self.resultsAWS[cType]:
+                        for img in obj.index:
+                            bg, dev, persp = img[0], img[2], img[4]
+                            iqaAWS.ix[:, '0_%s%s%s'%(bg,dev,persp)] += 1
+
+                    for obj in self.resultsAzure[cType]:
+                        for img in obj.index:
+                            bg, dev, persp = img[0], img[2], img[4]
+                            iqaAzure.ix[:, '0_%s%s%s'%(bg,dev,persp)] += 1
+                else:
+                    levels_tmp = self.levels[:-1] if i == 1 else self.levels
+                    for lev in range(len(levels_tmp)):
+                        for obj in self.resultsAWS[cType][lev*numObjAWS:lev*numObjAWS + numObjAWS]:
+                            for img in obj.index:
+                                bg,dev,persp = img[0], img[2], img[4]
+                                iqaAWS.ix[cType - 1, '%d_%s%s%s'%(lev+1,bg,dev,persp)] += 1
+
+                        for obj in self.resultsAzure[cType][lev*numObjAzure:lev*numObjAzure + numObjAzure]:
+                            for img in obj.index:
+                                bg,dev,persp = img[0], img[2], img[4]
+                                iqaAzure.ix[cType - 1, '%d_%s%s%s'%(lev+1,bg,dev,persp)] += 1
+
+
+            iqaAWS = iqaAWS / numObjAWS * 100
+            iqaAzure = iqaAzure / numObjAzure * 100
+
+            iqaAWS.to_csv(os.path.join(self.resultDir, 'IQA', 'Data', 'AWS_color_N_%d_obj_%d.csv'%(self.topN, numObjAWS)))
+            iqaAzure.to_csv(os.path.join(self.resultDir, 'IQA', 'Data', 'Azure_color_N_%d_obj_%d.csv'%(self.topN, numObjAzure)))
+
+        # return iqaAWS, iqaAzure
+        return
+
+    def _run_IQA_matlab_script(self):
+        try:
+            IQA_vals = pd.read_csv('Results/IQA/Data/IQA_concat_allLev.csv', header=None)
+            perf_vals = pd.read_csv('Results/IQA/Data/Perf_concat_allLev.csv', header=None)
+            return IQA_vals, perf_vals
+
+        except IOError:
+            print('No data found: Run IQA_loader.m file on Matlab or download IQA data!')
+            sys.exit(1)

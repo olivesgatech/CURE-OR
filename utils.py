@@ -67,7 +67,47 @@ def plot_challenging_types_cf(df_list, app, result_path):
 
         plt.savefig(result_path + '/Plots/%s_lev%d_top1_cf.jpg'%(app, levCT),bbox_inches='tight')
         plt.close()
+
+def scatter_plot_IQA(IQA_vals, perf_vals, result_path):
+    markers = ['H','X','o','D','>','P']
+    mkSize = 140
+    mkSizes = [mkSize-20 if m =='o' else mkSize-60 if m=='D' else mkSize for m in markers]
+    mkLineWidth = 1
+    maxVals = [55,1,1,1]
+    IQAs = ['PSNR', 'SSIM', 'UNIQUE']
+    legend = ['Original', 'Level 1', 'Level 2', 'Level 3', 'Level_4', 'Level_5']
+    colors = cm.rainbow(np.linspace(0,1,len(legend))) 
+    plots = ()
+
+    for IQA in range(len(IQAs)):
+        plt.figure(figsize=(3,3))
+        for i in range(len(legend)): # lev 0-5
+            plot = plt.scatter(IQA_vals.iloc[i, IQA*15:(IQA+1)*15], perf_vals.iloc[i, IQA*15:(IQA+1)*15],
+                               mkSizes[i], marker=markers[i], c=colors[i], linewidths=mkLineWidth,
+                               edgecolors='k')
+            plots += (plot, )
+        plt.xlabel(IQAs[IQA], fontsize=17, fontweight='normal', labelpad=10)
+        plt.xticks(fontsize=14)
+
+        plt.ylabel('Top-5 Accuracy', fontsize=16, fontweight='normal')
+        yMax = 40
+        yInc = 10
+        ytickLabels = ['%d'%i for i in range(0,yMax, yInc)]
+        ytickLabels.append('%i+'%yMax)
+        plt.yticks(range(0,yMax+1,yInc), ytickLabels, fontsize=14)
+        plt.ylim([0,yMax])
+        plt.tight_layout()
+        plt.savefig(os.path.join(result_path, 'Plots', 'IQAs_perf_%s.jpg'%IQAs[IQA]))
+        plt.close()
+
+    plt.figure(figsize=(9,0.1))
+    plt.legend(plots, legend, ncol=len(legend), fontsize='large', frameon=True, loc='center',
+               columnspacing=0.5, handletextpad=0.1, borderpad=0.5)
+    plt.axis('off')
+    plt.savefig(os.path.join(result_path, 'Plots', 'IQAs_perf_legend.jpg'), bbox_inches='tight')
+    plt.close()
+
+
 # TODO
-# def scatter_plot_IQA():
 # def plot_acquisition_conditions():
 # def scatter_plot_similarity_estimation():

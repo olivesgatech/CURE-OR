@@ -70,22 +70,37 @@ def challenging_conditions(AWSDir, AzureDir, resultDir, common=False, topN=5):
     return
 
 def challenging_conditions_cf(AWSDir, AzureDir, resultDir, common=False, topN=5):
-    cureor = CUREORrecognitionData(AWSDir, AzureDir, common, topN)
     result_path = os.path.join(resultDir, 'Challenging_conditions_cf')
     if not os.path.exists(result_path + '/CSV'): os.makedirs(result_path + '/CSV')
     if not os.path.exists(result_path + '/Plots'): os.makedirs(result_path + '/Plots')
 
+    cureor = CUREORrecognitionData(AWSDir, AzureDir, common, topN, cf=True)
     cfAWS, cfAzure = cureor.cfAWS, cureor.cfAzure
 
     plot_challenging_types_cf(cfAWS, 'AWS', result_path)
     plot_challenging_types_cf(cfAzure, 'Azure', result_path)
 
-# def IQA(IQADir):
+def IQA(AWSDir, AzureDir, IQADir, resultDir):
+    result_path = os.path.join(resultDir, IQADir)
+    if not os.path.exists(result_path + '/Data'): os.makedirs(result_path + '/Data')
+    if not os.path.exists(result_path + '/Plots'): os.makedirs(result_path + '/Plots')
 
+    cureor = CUREORrecognitionData(AWSDir, AzureDir, common=True, topN=5, IQA=True)
+    IQA_vals = cureor.IQA_vals
+    perf_vals = cureor.perf_vals
+
+    scatter_plot_IQA(IQA_vals, perf_vals, result_path)
+
+def acquisition_conditions(AWSDir, AzureDir, resultDir, common=False):
+    result_path = os.path.join(resultDir, '/Acquisition_conditions')
+    if not os.path.exists(result_path + '/CSV'): os.makedirs(result_path + '/CSV')
+    if not os.path.exists(result_path + '/Plots'): os.makedirs(result_path + '/Plots')
 
 def main():
     # challenging_conditions('AWS', 'Azure', 'Results', common=True)
-    challenging_conditions_cf('AWS', 'Azure', 'Results')
-    # IQA('IQA')
+    # challenging_conditions_cf('AWS', 'Azure', 'Results')
+    # IQA('AWS', 'Azure', 'IQA', 'Results')
+    acquisition_conditions('AWS', 'Azure', 'Results')
+
 if __name__=="__main__":
     main()
