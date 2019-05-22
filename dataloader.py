@@ -1,10 +1,12 @@
-import os, csv, json, sys
+import os, csv, json, sys, pickle
 import pandas as pd
 import numpy as np
+from scipy.stats import spearmanr
 from collections import OrderedDict
+from utils import scatter_plot_CBIR
 
 class CUREORrecognitionData:
-    def __init__(self, AWSDir, AzureDir, resultDir='Results/', common=False, topN=5, cf=False, IQA=False):
+    def __init__(self, AWSDir, AzureDir, resultDir='Results/', common=False, topN=5, cf=False, IQA=False, CBIR=False):
         # AWSDir : directory of AWS recognition results
         # AzureDir : directory of Azure recognition results
         # Common: 10 common objects between AWS and Azure (default: False -> Top objects instead)
@@ -115,6 +117,17 @@ class CUREORrecognitionData:
         if cf == True: self.cfAWS, self.cfAzure = self.load_confusion_matrix()
         if IQA == True: self.IQA_vals, self.perf_vals = self.load_IQA_results()
 
+        if CBIR == True:
+            self.rmvList = {'bgs':[4,5], 'devs':[], 'persps':[5]}
+            self.rmvListStr = '_bg' + ''.join([str(i) for i in self.rmvList['bgs']]) + \
+                              '_dev' + ''.join([str(i) for i in self.rmvList['devs']]) + \
+                              '_persp' + ''.join([str(i) for i in self.rmvList['persps']])
+            self.CBIR_features = ['Color', 'Daisy', 'Edge', 'Gabor', 'HOG',
+                                  'VGGNetFeat2', # vgg11
+                                  'VGGNetFeat4', # vgg13
+                                  'VGGNetFeat3'] # vgg16
+            self.distMetrics = ['l1','l2','squared_l2','SAD','SSAD','Canberra','Chebyshev','Minkowski','Braycurtis','Cosine']
+
     def load_recognition_results(self):
         resultsAWS, resultsAzure = [], []
         minConf = 0
@@ -171,7 +184,7 @@ class CUREORrecognitionData:
     def load_confusion_matrix(self):
         nCols = 7 # 'others' column
 
-        outputLoc = os.path.join(self.resultDir, 'Challenging_conditions_cf', 'CSV')
+        outputLoc = os.path.join(self.resultDir, 'Challenging_conditions_cf', 'Data')
         if not os.path.exists(outputLoc): os.makedirs(outputLoc)
 
         try:
@@ -346,10 +359,9 @@ class CUREORrecognitionData:
 
 
     def load_IQA_results(self):
-        self._prepare_IQA_results()
-        return self._run_IQA_matlab_script()
-
-    def _prepare_IQA_results(self):
+        perfAWS, perfAzure = self._prepare_perf_results()
+        return self._load_perf_IQA_results()
+    def _prepare_perf_results(self):
         numObjAWS = len(self.awsObj)
         numObjAzure = len(self.azureObj)
 
@@ -398,10 +410,9 @@ class CUREORrecognitionData:
             iqaAWS.to_csv(os.path.join(self.resultDir, 'IQA', 'Data', 'AWS_color_N_%d_obj_%d.csv'%(self.topN, numObjAWS)))
             iqaAzure.to_csv(os.path.join(self.resultDir, 'IQA', 'Data', 'Azure_color_N_%d_obj_%d.csv'%(self.topN, numObjAzure)))
 
-        # return iqaAWS, iqaAzure
-        return
+        return iqaAWS, iqaAzure
 
-    def _run_IQA_matlab_script(self):
+    def _load_perf_IQA_results(self):
         try:
             IQA_vals = pd.read_csv('Results/IQA/Data/IQA_concat_allLev.csv', header=None)
             perf_vals = pd.read_csv('Results/IQA/Data/Perf_concat_allLev.csv', header=None)
@@ -410,3 +421,135 @@ class CUREORrecognitionData:
         except IOError:
             print('No data found: Run IQA_loader.m file on Matlab or download IQA data!')
             sys.exit(1)
+
+
+    def load_CBIR_perf_dist(self, plot_path=None):
+        dist = pickle.load(open('CBIR/Distance/avg_no_challenge.pkl', 'rb'))
+        keys = sorted(list(dist))
+
+        cStr = ['bgs', 'persps']
+        cLegends = [self.bgs, self.persps]
+
+        corr_all = {}
+
+        for app in ['AWS', 'Azure']:
+            perf = pickle.load(open('CBIR/Performance/%s_10_no_challenge.pkl'%app, 'rb'))
+
+            for condition, legend in zip(cStr, cLegends):
+                corr = pd.DataFrame(columns=self.distMetrics)
+
+                for f in self.CBIR_features:
+                    for d in self.distMetrics:
+                        df = pd.DataFrame(index=['dist'])
+
+                        for k in keys:
+                            df.loc['dist', k] = dist[k][f][d]['average']
+                            df.loc['perf_%s'%app, k] = perf[k]
+
+                        df_c = self._rmvAvg_keep(df, condition)
+                        cols = self._aType_options_columns(list(df_c), condition)
+
+                        v1, v2 = 1.0/df_c.iloc[0,:], df_c.iloc[1,:] # v1:1/dist
+                        v1, v2, cols = self._persp_average_sideviews(condition, v1,v2, cols)
+                        if plot_path:
+                            plot_name = '%s_%s_%s_%s.jpg'%(app, condition, f, d)
+                            scatter_plot_CBIR(v1, v2, cols, os.path.join(plot_path, plot_name), legend)
+                        corr.loc[f, d] = self._corr(v1, v2)
+
+                corr_all['%s_%s'%(app, condition)] = corr
+
+        return corr_all
+
+    def _rmvAvg_keep(self, df, aType='bgs'):
+        '''
+        Given an aspect (asp0) to analyze:
+        Remove some options and average of another aspect (asp1)
+        Keep all 5 options of the other aspect (asp2)
+        Return the original df with new indices: (avg/rmv & keep columns)
+        '''
+        bgs, devs, persps = list(range(1,6)), list(range(1,6)), list(range(1,6)) 
+
+        if aType == 'bgs':
+            asp0 = bgs
+            asp1, asp1List, asp1Ind = persps, self.rmvList['persps'], 4
+            asp2 = devs
+
+            for a in asp1List: asp1.remove(a)
+            cols = sorted([sorted(['%d_%d_%d'%(b,d,p) for p in asp1]) for d in asp2 for b in asp0])
+
+        elif aType == 'devs':
+            asp0 = devs
+            asp1, asp1List, asp1Ind = bgs, self.rmvList['bgs'], 0
+            asp2 = persps
+
+            for a in asp1List: asp1.remove(a)
+            cols = sorted([sorted(['%d_%d_%d'%(b,d,p) for b in asp1]) for p in asp2 for d in asp0])
+
+        elif aType == 'persps':
+            asp0 = persps
+            # asp1, asp1List, asp1Ind = devs, self.rmvList['devs'], 2
+            # asp2 = bgs
+            asp1, asp1List, asp1Ind = bgs, self.rmvList['bgs'], 0
+            asp2 = devs
+
+            for a in asp1List: asp1.remove(a)
+            # cols = sorted([sorted(['%d_%d_%d'%(b,d,p) for d in asp1]) for b in asp2 for p in asp0])
+            cols = sorted([sorted(['%d_%d_%d'%(b,d,p) for b in asp1]) for d in asp2 for p in asp0])
+        else:
+            print('Wrong analysis aspect: %s'%aType)
+            return
+
+        indices = df.index[:3] # ['dist', 'perf_AWS', 'perf_Azure']
+        df_aType = pd.DataFrame()
+        for ind in indices:
+            for col in cols:
+                colName = col[0][:asp1Ind] + '*' + col[0][asp1Ind + 1:]
+                # print(col, colName)
+                df_aType.loc['%s_%s'%(aType, ind), colName] = df.loc[ind, col].mean()
+
+        return df_aType
+
+    def _aType_options_columns(self, dfCols, aType):
+
+        cols = [[] for _ in range(5)]
+
+        if aType == 'bgs':
+            for c in dfCols: cols[int(c[0]) - 1].append(c)
+        elif aType == 'devs':
+            for c in dfCols: cols[int(c[2]) - 1].append(c)
+        elif aType == 'persps':
+            for c in dfCols: cols[int(c[4]) - 1].append(c)
+
+        return cols
+
+    def _persp_average_sideviews(self, aType, v1,v2, cols, AVERAGE_SIDE_VIEWS=True):
+
+        if aType == 'persps' and AVERAGE_SIDE_VIEWS: # average out sideviews
+            x = np.zeros([2,5])
+            for col in cols[1:-1]:
+                x[0,:] += v1[col]
+                x[1,:] += v2[col]
+            x /= 3.0
+
+            v1[cols[1]] = x[0]
+            v2[cols[1]] = x[1]
+
+            for col in cols[2:-1]:
+                v1.drop(index=col, inplace=True)
+                v2.drop(index=col, inplace=True)
+                cols.remove(col)
+
+        return v1,v2,cols
+
+    def _corr(self, v1, v2):
+        if isinstance(v2, list):
+            ct = 0
+            for i in v2:
+                if i == 0: ct += 1
+            if ct == 5: v2 = np.random.uniform(-1e-5,1e-5,5)
+        else:
+            if all(v1 == 0): v1 = np.random.uniform(-1e-5,1e-5,5)
+            if all(v2 == 0): v2 = np.random.uniform(-1e-5,1e-5,5)
+        c,p = spearmanr(v1,v2)
+
+        return c

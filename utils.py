@@ -140,5 +140,27 @@ def plot_acquisition_conditions(df_list, df_names, condition, postfix, result_pa
 
         plt.savefig('%s/Plots/%s_%s_%s.jpg'%(result_path, name, cStr, postfix))
         plt.close()
-# TODO
-# def scatter_plot_similarity_estimation():
+
+def scatter_plot_CBIR(dist, perf, cols, plot_path, legend):
+    colors = cm.rainbow(np.linspace(0,1,len(legend)))
+    mks = ['H','>','X','D','o','P']
+    mkSize = 250
+    mkSizes = [mkSize-20 if m =='o' else mkSize-60 if m=='D' else mkSize for m in mks]
+    mkLW = 1
+
+    fig, ax = plt.subplots(figsize=(5,5))
+    for i, col in enumerate(cols):
+        ax.scatter(dist[col], perf[col], mkSizes[i], marker=mks[i], c=colors[i], linewidths=mkLW,
+                   edgecolors='k')
+    ax.set_xscale('log')
+    legendLoc = 'lower right'
+
+    ax.set_xlabel('log(1 / distance)', size=25)
+    ax.set_ylabel('Top-5 Accuracy(%)', size=25)
+    ax.tick_params(axis='both', which='major', labelsize=19)
+
+    plt.legend(legend, loc=legendLoc, fontsize=21, borderpad=0.3, labelspacing=0.1, \
+                handlelength=1, handletextpad=0.1, borderaxespad=0.1)
+    plt.tight_layout()
+    plt.savefig(plot_path)
+    plt.close()

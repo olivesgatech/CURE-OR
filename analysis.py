@@ -1,13 +1,12 @@
 import pandas as pd
-import os
-
+import os, sys
 from dataloader import CUREORrecognitionData
 from utils import *
 
 def challenging_conditions(AWSDir, AzureDir, resultDir, common=False, topN=5):
     cureor = CUREORrecognitionData(AWSDir, AzureDir, common, topN)
     result_path = os.path.join(resultDir, 'Challenging_conditions')
-    if not os.path.exists(result_path + '/CSV'): os.makedirs(result_path + '/CSV')
+    if not os.path.exists(result_path + '/Data'): os.makedirs(result_path + '/Data')
     if not os.path.exists(result_path + '/Plots'): os.makedirs(result_path + '/Plots')
 
     resultsAWS, resultsAzure = cureor.resultsAWS, cureor.resultsAzure
@@ -20,8 +19,8 @@ def challenging_conditions(AWSDir, AzureDir, resultDir, common=False, topN=5):
         for results, app in zip([resultsAWS, resultsAzure], ['AWS', 'Azure']):
             color_file = '%s_%s_color_N_%d'%(app,objs,topN)
             gray_file = '%s_%s_gray_N_%d'%(app,objs,topN)
-            dfNumGTcolor = pd.read_csv(os.path.join(result_path, 'CSV', color_file+'.csv'), index_col=0)
-            dfNumGTgray = pd.read_csv(os.path.join(result_path, 'CSV', gray_file+'.csv'), index_col=0)
+            dfNumGTcolor = pd.read_csv(os.path.join(result_path, 'Data', color_file+'.csv'), index_col=0)
+            dfNumGTgray = pd.read_csv(os.path.join(result_path, 'Data', gray_file+'.csv'), index_col=0)
             print('Read in existing result files for %s'%app)
 
             plot_challenging_types([dfNumGTcolor, dfNumGTgray],
@@ -60,8 +59,8 @@ def challenging_conditions(AWSDir, AzureDir, resultDir, common=False, topN=5):
                             dfNumGTgray.ix[i - 10,levels_tmp[j]] = ct[j]/numObjf/125*100
 
 
-            dfNumGTcolor.to_csv(os.path.join(result_path, 'CSV', '%s_%s_color_N_%d.csv'%(app,objs,topN)))
-            dfNumGTgray.to_csv(os.path.join(result_path, 'CSV', '%s_%s_gray_N_%d.csv'%(app,objs,topN)))
+            dfNumGTcolor.to_csv(os.path.join(result_path, 'Data', '%s_%s_color_N_%d.csv'%(app,objs,topN)))
+            dfNumGTgray.to_csv(os.path.join(result_path, 'Data', '%s_%s_gray_N_%d.csv'%(app,objs,topN)))
 
             plot_challenging_types([dfNumGTcolor, dfNumGTgray],
                                    [color_file, gray_file],
@@ -71,17 +70,17 @@ def challenging_conditions(AWSDir, AzureDir, resultDir, common=False, topN=5):
 
 def challenging_conditions_cf(AWSDir, AzureDir, resultDir, common=False, topN=5):
     result_path = os.path.join(resultDir, 'Challenging_conditions_cf')
-    if not os.path.exists(result_path + '/CSV'): os.makedirs(result_path + '/CSV')
+    if not os.path.exists(result_path + '/Data'): os.makedirs(result_path + '/Data')
     if not os.path.exists(result_path + '/Plots'): os.makedirs(result_path + '/Plots')
 
-    cureor = CUREORrecognitionData(AWSDir, AzureDir, common, topN, cf=True)
+    cureor = CUREORrecognitionData(AWSDir, AzureDir, common=common, topN=topN, cf=True)
     cfAWS, cfAzure = cureor.cfAWS, cureor.cfAzure
 
     plot_challenging_types_cf(cfAWS, 'AWS', result_path)
     plot_challenging_types_cf(cfAzure, 'Azure', result_path)
 
-def IQA(AWSDir, AzureDir, IQADir, resultDir):
-    result_path = os.path.join(resultDir, IQADir)
+def IQA(AWSDir, AzureDir, resultDir):
+    result_path = os.path.join(resultDir, 'IQA')
     if not os.path.exists(result_path + '/Data'): os.makedirs(result_path + '/Data')
     if not os.path.exists(result_path + '/Plots'): os.makedirs(result_path + '/Plots')
 
@@ -93,7 +92,7 @@ def IQA(AWSDir, AzureDir, IQADir, resultDir):
 
 def acquisition_conditions(AWSDir, AzureDir, resultDir, common=False):
     result_path = os.path.join(resultDir, 'Acquisition_conditions')
-    if not os.path.exists(result_path + '/CSV'): os.makedirs(result_path + '/CSV')
+    if not os.path.exists(result_path + '/Data'): os.makedirs(result_path + '/Data')
     if not os.path.exists(result_path + '/Plots'): os.makedirs(result_path + '/Plots')
 
     cureor = CUREORrecognitionData(AWSDir, AzureDir, common=common, topN=5)
@@ -109,8 +108,8 @@ def acquisition_conditions(AWSDir, AzureDir, resultDir, common=False):
         index, idLoc, cStr = c
 
         try:
-            dfAWS = pd.read_csv(os.path.join(result_path, 'CSV', 'AWS_%s_%s.csv'%(cStr, postfix)), index_col=0)
-            dfAzure = pd.read_csv(os.path.join(result_path, 'CSV', 'Azure_%s_%s.csv'%(cStr, postfix)), index_col=0)
+            dfAWS = pd.read_csv(os.path.join(result_path, 'Data', 'AWS_%s_%s.csv'%(cStr, postfix)), index_col=0)
+            dfAzure = pd.read_csv(os.path.join(result_path, 'Data', 'Azure_%s_%s.csv'%(cStr, postfix)), index_col=0)
 
         except IOError:
             dfAWS = pd.DataFrame(index=[ind[3:] for ind in cTypeIndex], columns=index)
@@ -146,16 +145,29 @@ def acquisition_conditions(AWSDir, AzureDir, resultDir, common=False):
                     ind = i - 1 if i < 9 else i - 2 # color: ind = i - 1; grayscale: ind = i - 2
                     for rank in range(5): dfAzure.ix[ind, rank] = ct[rank]/numObjf/len(levels_tmp)/25*100
 
-            dfAWS.to_csv(os.path.join(result_path, 'CSV', 'AWS_%s_%s.csv'%(cStr,postfix)))
-            dfAzure.to_csv(os.path.join(result_path, 'CSV', 'Azure_%s_%s.csv'%(cStr,postfix)))
+            dfAWS.to_csv(os.path.join(result_path, 'Data', 'AWS_%s_%s.csv'%(cStr,postfix)))
+            dfAzure.to_csv(os.path.join(result_path, 'Data', 'Azure_%s_%s.csv'%(cStr,postfix)))
 
         plot_acquisition_conditions([dfAWS, dfAzure], ['AWS', 'Azure'], c, postfix, result_path, cureor.cTypes)
 
+def CBIR_performance_estimation(AWSDir, AzureDir, resultDir):
+    result_path = os.path.join(resultDir, 'CBIR')
+    if not os.path.exists(result_path + '/Data'): os.makedirs(result_path + '/Data')
+    if not os.path.exists(result_path + '/Plots'): os.makedirs(result_path + '/Plots')
+
+    cureor = CUREORrecognitionData(AWSDir, AzureDir, common=True, topN=5, CBIR=True)
+
+    corr_all = cureor.load_CBIR_perf_dist()
+    for c, df in corr_all.iteritems():
+        df.to_csv(os.path.join(result_path, 'Data', '%s.csv'%c))
+
 def main():
-    # challenging_conditions('AWS', 'Azure', 'Results', common=True)
-    # challenging_conditions_cf('AWS', 'Azure', 'Results')
-    # IQA('AWS', 'Azure', 'IQA', 'Results')
-    acquisition_conditions('AWS', 'Azure', 'Results')
+    AWSDir, AzureDir, resultDir = 'AWS', 'Azure', 'Results'
+    challenging_conditions(AWSDir, AzureDir, resultDir, common=True)
+    challenging_conditions_cf(AWSDir, AzureDir, resultDir)
+    IQA(AWSDir, AzureDir, resultDir)
+    acquisition_conditions(AWSDir, AzureDir, resultDir, common=True)
+    CBIR_performance_estimation(AWSDir, AzureDir, resultDir)
 
 if __name__=="__main__":
     main()
