@@ -7,7 +7,7 @@ The goal of this project is to analyze the robustness of off-the-shelf recogniti
 
 * Papers
   * [CURE-OR: Challenging Unreal and Real Environments for Object Recognition](https://arxiv.org/pdf/1810.08293.pdf)
-  * [”Object Recognition Under Multifarious Conditions: A Reliability Analysis and A Feature Similarity-Based Performance Estimation](https://arxiv.org/pdf/1902.06585.pdf)
+  * [Object Recognition Under Multifarious Conditions: A Reliability Analysis and A Feature Similarity-Based Performance Estimation](https://arxiv.org/pdf/1902.06585.pdf)
 * Website
   * [OLIVES](https://ghassanalregib.com/)
 
