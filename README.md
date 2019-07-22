@@ -1,15 +1,61 @@
 # CURE-OR
 
-The goal of this project is to analyze the robustness of off-the-shelf recognition applications under multifarious challenging conditions, investigate the relationship between the recognition performance and image quality, and estimate the performance based on hand-crafted features as well as data-driven features. To achieve this goal, we introduced a large-scale, controlled, and multi-platform object recognition dataset CURE-OR, which includes 1 million images of 100 objects captured with different backgrounds, devices and perspectives, as well as simulated challenging conditions. This repository includes codes to produce analysis results in our papers. For more information about CURE-OR, please refer to our papers and website linked below.
+<p align="center"><img src="./figs/cure_or_lr.gif", width="500"></p>
+
+
+The goal of this project is to analyze the robustness of off-the-shelf recognition applications under multifarious challenging conditions, investigate the relationship between the recognition performance and image quality, and estimate the performance based on hand-crafted features as well as data-driven features. To achieve this goal, we introduced a large-scale, controlled, and multi-platform object recognition dataset CURE-OR, which stands for Challenging Unreal and Real Environments for Object Recognition. In CURE-OR dataset, there are 1,000,000 images of 100 objects with varying size, color, and texture, captured with multiple devices in different setups. The majority of images in the CURE-OR dataset were acquired with smartphones and tested with off-the-shelf applications to benchmark the recognition performance of devices and applications that are used in our daily lives. This repository summrizes the characterisitcs of our dataset and provides codes to reproduce analysis results in our papers. For more information about CURE-OR, please refer to our papers.
 
 * Papers
   * [CURE-OR: Challenging Unreal and Real Environments for Object Recognition](https://arxiv.org/pdf/1810.08293.pdf)
   * [”Object Recognition Under Multifarious Conditions: A Reliability Analysis and A Feature Similarity-Based Performance Estimation](https://arxiv.org/pdf/1902.06585.pdf)
 * Website
   * [OLIVES](https://ghassanalregib.com/)
-  * [CURE-OR dataset page](https://ghassanalregib.com/cure-or/)
 
 ## Dataset
+<table>
+<tbody>
+<tr style="text-align:justify;">
+<td style="text-align:center;"><strong> Object classes
+(number of objects/class)</strong></td>
+<td style="text-align:center;"><strong>Images
+per object</strong></td>
+<td style="text-align:center;"><strong>Controlled condition
+(level)</strong></td>
+<td style="text-align:center;"><strong>Backgrounds</strong></td>
+<td style="text-align:center;"><b>Acquisition devices</b></td>
+<td style="text-align:center;"><b>Object orientations</b></td>
+</tr>
+<tr>
+<td style="text-align:center;">Toy (23)
+Personal (10)
+Office (14)
+Household (27)
+Sports/Entertainment (10)
+Health (16)</td>
+<td style="text-align:center;">10,000</td>
+<td style="text-align:center;">Background (5)
+Object orientation (5)
+Devices (5)
+Challenging conditions (78)</td>
+<td style="text-align:center;">White 2D (1)
+Textured 2D (2)
+<span style="font-family:inherit;font-size:inherit;">Real 3D (2)</span></td>
+<td style="text-align:center;">DSLR: Nikon D80
+Webcam: Logitech C920
+Smartphones: iPhone 6s, HTC One, LG Leon</td>
+<td style="text-align:center;">Front (0<sup>o</sup>)
+Left side (90<sup>o</sup>)
+Back (180<sup>o</sup>)
+Right side (270<sup>o</sup>)
+Top</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
 Objects of CURE-OR: 100 objects of 6 categories
 <p align="center"><img src="./figs/cureor_objects.png", width="800"></p>
 
