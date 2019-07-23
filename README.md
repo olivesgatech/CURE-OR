@@ -32,7 +32,7 @@ year        = {2019},}
 In CURE-OR dataset, there are 1,000,000 images of 100 objects with varying size, color, and texture, captured with multiple devices in different setups. The majority of images in the CURE-OR dataset were acquired with smartphones and tested with off-the-shelf applications to benchmark the recognition performance of devices and applications that are used in our daily lives. In order to receive the download link, please fill out this [form](https://goo.gl/forms/YVM3N6RrywNPuEjJ3) to submit your information and agree to the conditions to use. These information will be kept confidential and will not be released to anyone outside the OLIVES administration team.
   
 
-# Dataset Characteristics
+### Dataset Characteristics
 <table>
 <tbody>
 <tr style="text-align:justify;">
@@ -73,6 +73,8 @@ Top</td>
 </tbody>
 </table>
 
+### Challenging Conditions
+<p align="center"><img src="./figs/cureor_challenges.JPG", width="800"></p>
 
 
 ### Objects 
