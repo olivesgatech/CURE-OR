@@ -1,5 +1,8 @@
 # CURE-OR
 
+ [OLIVES Lab, Georgia Institute of Technology](https://ghassanalregib.com/)
+
+
 <p align="center"><img src="./figs/cure_or_lr.gif", width="500"></p>
 
 
