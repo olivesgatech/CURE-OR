@@ -64,7 +64,8 @@ def challenging_conditions(AWSDir, AzureDir, resultDir, common=False, topN=5):
 
             plot_challenging_types([dfNumGTcolor, dfNumGTgray],
                                    [color_file, gray_file],
-                                   result_path)
+                                   result_path,
+                                   cTypes)
 
     return
 

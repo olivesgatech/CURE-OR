@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib.colors import to_hex
@@ -34,7 +36,7 @@ def plot_challenging_types(df_list, df_names, result_path, cTypes):
         plt.yticks(fontsize=16)
         plt.ylim([0,50])
 
-        plt.savefig(os.path.join(result_path, 'Plots', name+'.jpg'), bbox_inches='tight')
+        plt.savefig(os.path.join(result_path, 'Plots', name+'.png'), bbox_inches='tight')
         plt.close()
 
 
@@ -65,7 +67,7 @@ def plot_challenging_types_cf(df_list, app, result_path):
         plt.ylabel('Actual category', fontsize=20, fontweight='normal')
         plt.yticks(tickLoc, range(1,7), fontsize=16)
 
-        plt.savefig(result_path + '/Plots/%s_lev%d_top1_cf.jpg'%(app, levCT),bbox_inches='tight')
+        plt.savefig(result_path + '/Plots/%s_lev%d_top1_cf.png'%(app, levCT),bbox_inches='tight')
         plt.close()
 
 
@@ -98,14 +100,14 @@ def scatter_plot_IQA(IQA_vals, perf_vals, result_path):
         plt.yticks(range(0,yMax+1,yInc), ytickLabels, fontsize=14)
         plt.ylim([0,yMax])
         plt.tight_layout()
-        plt.savefig(os.path.join(result_path, 'Plots', 'IQAs_perf_%s.jpg'%IQAs[IQA]))
+        plt.savefig(os.path.join(result_path, 'Plots', 'IQAs_perf_%s.png'%IQAs[IQA]))
         plt.close()
 
     plt.figure(figsize=(9,0.1))
     plt.legend(plots, legend, ncol=len(legend), fontsize='large', frameon=True, loc='center',
                columnspacing=0.5, handletextpad=0.1, borderpad=0.5)
     plt.axis('off')
-    plt.savefig(os.path.join(result_path, 'Plots', 'IQAs_perf_legend.jpg'), bbox_inches='tight')
+    plt.savefig(os.path.join(result_path, 'Plots', 'IQAs_perf_legend.png'), bbox_inches='tight')
     plt.close()
 
 
@@ -138,7 +140,7 @@ def plot_acquisition_conditions(df_list, df_names, condition, postfix, result_pa
         plt.ylabel('Top-5 Accuracy (%%)', fontsize=20, fontweight='normal')
         plt.yticks(fontsize=16)
 
-        plt.savefig('%s/Plots/%s_%s_%s.jpg'%(result_path, name, cStr, postfix))
+        plt.savefig('%s/Plots/%s_%s_%s.png'%(result_path, name, cStr, postfix))
         plt.close()
 
 def scatter_plot_CBIR(dist, perf, cols, plot_path, legend):
