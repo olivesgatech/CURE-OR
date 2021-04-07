@@ -303,7 +303,7 @@ Python Imaging Library (PIL) version 4.2.1 and scikit-image version 0.13.0 are 
 
 
 # Paper Data
-Download the analysis data from [here](https://www.dropbox.com/s/76ilscx5zha3imf/cure_or_analysis_data.tar.gz?dl=0) and unzip it under the same directory as the codes. The folder structure is as following:
+Download the analysis data from [here](https://www.dropbox.com/s/g145lsrsvr0x46r/cure_or_analysis_data.tar.gz?dl=0) and unzip it under the same directory as the codes. The folder structure is as following:
 ```
 ├── AWS/                          # Recognition results from AWS Rekognition API
 │    ├─── 01_no_challenge/        # Organized in folders by challenge types of CURE-OR
